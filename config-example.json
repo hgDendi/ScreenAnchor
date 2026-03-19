@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "debounceMs": 500,
+  "screens": [
+    { "alias": "dell-portrait", "nameContains": "U2723QE" },
+    { "alias": "dell-main", "nameContains": "UP2720Q" },
+    { "alias": "macbook", "nameContains": "Built-in" }
+  ],
+  "rules": [
+    {
+      "app": { "bundleId": "com.mitchellh.ghostty" },
+      "targetScreen": "dell-portrait"
+    },
+    {
+      "app": { "bundleId": "com.googlecode.iterm2" },
+      "targetScreen": "dell-portrait"
+    },
+    {
+      "app": { "bundleId": "com.electron.lark" },
+      "targetScreen": "macbook"
+    },
+    {
+      "app": { "bundleId": "com.google.Chrome" },
+      "targetScreen": "dell-main",
+      "profileOverrides": {
+        "2-screen": "macbook"
+      }
+    }
+  ],
+  "profiles": {
+    "3-screen": { "screenCount": 3 },
+    "2-screen": { "screenCount": 2 }
+  }
+}
