@@ -10,7 +10,7 @@ final class LayoutSnapshotStore: ObservableObject {
 
     init() {
         let configDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/screenanchor/snapshots")
+            .appendingPathComponent(".config/zcreen/snapshots")
         self.snapshotDir = configDir
         try? FileManager.default.createDirectory(at: configDir, withIntermediateDirectories: true)
         loadAll()

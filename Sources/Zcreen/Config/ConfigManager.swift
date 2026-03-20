@@ -15,7 +15,7 @@ final class ConfigManager: ObservableObject {
 
     init() {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        configDir = home.appendingPathComponent(".config/screenanchor")
+        configDir = home.appendingPathComponent(".config/zcreen")
         configFileURL = configDir.appendingPathComponent("config.json")
 
         // Start with empty config (zero-config mode)

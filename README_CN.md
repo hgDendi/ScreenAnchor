@@ -1,8 +1,8 @@
-# ScreenAnchor
+# Zcreen
 
 <p align="center">
-  <a href="https://github.com/hgDendi/ScreenAnchor/releases/latest">
-    <img src="https://img.shields.io/github/v/release/hgDendi/ScreenAnchor?style=flat-square&color=blue" alt="Latest Release">
+  <a href="https://github.com/hgDendi/Zcreen/releases/latest">
+    <img src="https://img.shields.io/github/v/release/hgDendi/Zcreen?style=flat-square&color=blue" alt="Latest Release">
   </a>
   <img src="https://img.shields.io/badge/platform-macOS%2013%2B-lightgrey?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License">
@@ -11,9 +11,9 @@
 
 macOS 菜单栏应用，多屏窗口管理。零配置即用。
 
-### [下载安装包 (DMG)](https://github.com/hgDendi/ScreenAnchor/releases/latest)
+### [下载安装包 (DMG)](https://github.com/hgDendi/Zcreen/releases/latest)
 
-> 打开 DMG，将 **ScreenAnchor** 拖到 **Applications**，启动后授予辅助功能权限。
+> 打开 DMG，将 **Zcreen** 拖到 **Applications**，启动后授予辅助功能权限。
 
 ## 功能特性
 
@@ -59,12 +59,12 @@ macOS 菜单栏应用，多屏窗口管理。零配置即用。
 
 **方式一：直接下载**
 
-从 [Releases](https://github.com/hgDendi/ScreenAnchor/releases/latest) 下载 DMG，打开后拖拽到 Applications。
+从 [Releases](https://github.com/hgDendi/Zcreen/releases/latest) 下载 DMG，打开后拖拽到 Applications。
 
 **方式二：源码构建**
 
 ```bash
-git clone https://github.com/hgDendi/ScreenAnchor.git && cd ScreenAnchor
+git clone https://github.com/hgDendi/Zcreen.git && cd Zcreen
 make install
 ```
 
@@ -72,7 +72,7 @@ make install
 
 | 问题 | 解决方案 |
 |------|----------|
-| 需要辅助功能权限 | 系统设置 > 隐私与安全性 > 辅助功能 > 添加 ScreenAnchor |
+| 需要辅助功能权限 | 系统设置 > 隐私与安全性 > 辅助功能 > 添加 Zcreen |
 | 重新构建后权限失效 | 每次构建产生新签名，需在辅助功能设置中重新添加 |
 | Snap Bar 不弹出 | 确认辅助功能权限已授予，重启应用 |
 

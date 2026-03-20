@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>ScreenAnchor</string>
+    <string>Zcreen</string>
     <key>CFBundleDisplayName</key>
-    <string>ScreenAnchor</string>
+    <string>Zcreen</string>
     <key>CFBundleIdentifier</key>
-    <string>com.screenanchor.app</string>
+    <string>com.zcreen.app</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>CFBundleShortVersionString</key>
@@ -15,7 +15,7 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleExecutable</key>
-    <string>ScreenAnchor</string>
+    <string>Zcreen</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>LSUIElement</key>

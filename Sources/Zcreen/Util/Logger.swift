@@ -1,7 +1,7 @@
 import os
 
 enum Log {
-    private static let subsystem = "com.screenanchor.app"
+    private static let subsystem = "com.zcreen.app"
 
     static let general = os.Logger(subsystem: subsystem, category: "general")
     static let screen = os.Logger(subsystem: subsystem, category: "screen")

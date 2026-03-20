@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-APP_NAME="ScreenAnchor"
+APP_NAME="Zcreen"
 APP_BUNDLE="${APP_NAME}.app"
 INSTALL_DIR="$HOME/Applications"
 

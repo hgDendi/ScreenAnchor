@@ -47,14 +47,14 @@ struct MenuBarView: View {
                 if secretTapCount >= 5 {
                     // Open config directory (snapshots + config.json) in Finder
                     let configDir = FileManager.default.homeDirectoryForCurrentUser
-                        .appendingPathComponent(".config/screenanchor")
+                        .appendingPathComponent(".config/zcreen")
                     NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: configDir.path)
                     secretTapCount = 0
                 }
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("ScreenAnchor")
+                Text("Zcreen")
                     .font(.system(size: 13, weight: .semibold))
                 Text("\(screenDetector.screenCount) screen\(screenDetector.screenCount == 1 ? "" : "s") \u{00B7} \(snapshotStore.savedProfileCount) layout\(snapshotStore.savedProfileCount == 1 ? "" : "s") saved")
                     .font(.system(size: 11))
@@ -381,7 +381,7 @@ struct MenuBarView: View {
 
     private func showAbout() {
         let alert = NSAlert()
-        alert.messageText = "ScreenAnchor"
+        alert.messageText = "Zcreen"
         alert.informativeText = "Version 1.0.0\n\nMulti-screen window manager for macOS.\nAutomatically saves and restores window layouts when screens change.\n\nNo configuration needed \u{2014} just plug/unplug your displays."
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")

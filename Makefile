@@ -14,7 +14,7 @@ install: bundle
 
 clean:
 	swift package clean
-	rm -rf ScreenAnchor.app
+	rm -rf Zcreen.app
 
 run: build
-	.build/debug/ScreenAnchor
+	.build/debug/Zcreen

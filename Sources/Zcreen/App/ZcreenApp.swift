@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct ScreenAnchorApp: App {
+struct ZcreenApp: App {
     @StateObject private var orchestrator = Orchestrator()
 
     var body: some Scene {

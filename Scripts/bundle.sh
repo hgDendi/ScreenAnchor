@@ -3,7 +3,7 @@ set -euo pipefail
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 
-APP_NAME="ScreenAnchor"
+APP_NAME="Zcreen"
 BUILD_DIR=".build/release"
 APP_BUNDLE="${APP_NAME}.app"
 CONTENTS="${APP_BUNDLE}/Contents"
@@ -21,8 +21,8 @@ mkdir -p "${MACOS}" "${RESOURCES}"
 cp "${BUILD_DIR}/${APP_NAME}" "${MACOS}/${APP_NAME}"
 
 # Copy icon
-if [ -f "Sources/ScreenAnchor/App/AppIcon.icns" ]; then
-    cp "Sources/ScreenAnchor/App/AppIcon.icns" "${RESOURCES}/AppIcon.icns"
+if [ -f "Sources/Zcreen/App/AppIcon.icns" ]; then
+    cp "Sources/Zcreen/App/AppIcon.icns" "${RESOURCES}/AppIcon.icns"
 fi
 
 # Create Info.plist
@@ -32,11 +32,11 @@ cat > "${CONTENTS}/Info.plist" << 'EOF'
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>ScreenAnchor</string>
+    <string>Zcreen</string>
     <key>CFBundleDisplayName</key>
-    <string>ScreenAnchor</string>
+    <string>Zcreen</string>
     <key>CFBundleIdentifier</key>
-    <string>com.screenanchor.app</string>
+    <string>com.zcreen.app</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>CFBundleShortVersionString</key>
@@ -44,7 +44,7 @@ cat > "${CONTENTS}/Info.plist" << 'EOF'
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleExecutable</key>
-    <string>ScreenAnchor</string>
+    <string>Zcreen</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>LSMinimumSystemVersion</key>

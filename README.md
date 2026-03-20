@@ -1,8 +1,8 @@
-# ScreenAnchor
+# Zcreen
 
 <p align="center">
-  <a href="https://github.com/hgDendi/ScreenAnchor/releases/latest">
-    <img src="https://img.shields.io/github/v/release/hgDendi/ScreenAnchor?style=flat-square&color=blue" alt="Latest Release">
+  <a href="https://github.com/hgDendi/Zcreen/releases/latest">
+    <img src="https://img.shields.io/github/v/release/hgDendi/Zcreen?style=flat-square&color=blue" alt="Latest Release">
   </a>
   <img src="https://img.shields.io/badge/platform-macOS%2013%2B-lightgrey?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License">
@@ -11,9 +11,9 @@
 
 macOS menu bar app for multi-screen window management. Zero configuration — just install and forget.
 
-### [Download (DMG)](https://github.com/hgDendi/ScreenAnchor/releases/latest)
+### [Download (DMG)](https://github.com/hgDendi/Zcreen/releases/latest)
 
-> Open the DMG, drag **ScreenAnchor** to **Applications**, launch, and grant Accessibility permission.
+> Open the DMG, drag **Zcreen** to **Applications**, launch, and grant Accessibility permission.
 
 ## Features
 
@@ -59,12 +59,12 @@ macOS menu bar app for multi-screen window management. Zero configuration — ju
 
 **Option 1: Download**
 
-Download the DMG from [Releases](https://github.com/hgDendi/ScreenAnchor/releases/latest), open it, and drag ScreenAnchor to Applications.
+Download the DMG from [Releases](https://github.com/hgDendi/Zcreen/releases/latest), open it, and drag Zcreen to Applications.
 
 **Option 2: Build from source**
 
 ```bash
-git clone https://github.com/hgDendi/ScreenAnchor.git && cd ScreenAnchor
+git clone https://github.com/hgDendi/Zcreen.git && cd Zcreen
 make install
 ```
 
@@ -72,7 +72,7 @@ make install
 
 | Problem | Solution |
 |---------|----------|
-| Accessibility permission required | System Settings > Privacy & Security > Accessibility > add ScreenAnchor |
+| Accessibility permission required | System Settings > Privacy & Security > Accessibility > add Zcreen |
 | Permission lost after rebuild | Each build changes the code signature; re-add in Accessibility settings |
 | Snap Bar not showing | Verify Accessibility permission is granted and restart the app |
 
