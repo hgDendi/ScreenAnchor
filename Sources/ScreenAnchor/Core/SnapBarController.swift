@@ -4,6 +4,9 @@ import ApplicationServices
 final class SnapBarController: ObservableObject {
     @Published var isEnabled = true
 
+    /// Called after a preset is applied, so the layout can be saved
+    var onSnap: (() -> Void)?
+
     private let windowManager: WindowManager
     private var panel: SnapBarPanel?
     private var isShowing = false
@@ -50,14 +53,7 @@ final class SnapBarController: ObservableObject {
         let mouseDown = (NSEvent.pressedMouseButtons & 1) != 0
         let mouse = NSEvent.mouseLocation
 
-        // Heartbeat every 2s
-        tickCount += 1
-        if tickCount % 40 == 0 {
-            Log.general.info("SNAP heartbeat \(self.tickCount) mouseDown=\(mouseDown) enabled=\(self.isEnabled)")
-        }
-
         if mouseDown && !wasMouseDown {
-            Log.general.info("SNAP: mouse pressed at \(Int(mouse.x)),\(Int(mouse.y))")
             onMouseDown(mouse)
         } else if mouseDown && wasMouseDown {
             onDragTick(mouse)
@@ -77,52 +73,35 @@ final class SnapBarController: ObservableObject {
         clickedTitleBar = false
         targetWindow = nil
 
-        guard let app = NSWorkspace.shared.frontmostApplication else {
-            Log.general.info("SNAP: no frontmost app")
-            dragState = .idle
-            return
-        }
-
-        let bid = app.bundleIdentifier ?? "?"
-        let policy = app.activationPolicy.rawValue
-
-        if bid == Bundle.main.bundleIdentifier {
-            dragState = .idle
-            return
-        }
-
-        if app.activationPolicy != .regular {
-            Log.general.info("SNAP: skip \(bid) policy=\(policy)")
+        guard let app = NSWorkspace.shared.frontmostApplication,
+              app.bundleIdentifier != Bundle.main.bundleIdentifier,
+              app.activationPolicy == .regular
+        else {
             dragState = .idle
             return
         }
 
         let appEl = AXUIElementCreateApplication(app.processIdentifier)
-        let win = focusedWindow(of: appEl) ?? firstWindow(of: appEl)
-
-        guard let win else {
-            Log.general.info("SNAP: no window for \(bid)")
+        guard let win = focusedWindow(of: appEl) ?? firstWindow(of: appEl) else {
             dragState = .idle
             return
         }
 
         targetWindow = win
 
-        guard let wFrame = windowFrame(win) else {
-            Log.general.info("SNAP: can't get frame for \(bid)")
-            return
-        }
+        guard let wFrame = windowFrame(win) else { return }
 
+        // Convert NS mouse → CG for comparison with AX window frame
         let primaryH = NSScreen.screens.first?.frame.height ?? 0
         let mouseCG = CGPoint(x: mouse.x, y: primaryH - mouse.y)
 
+        // Title bar = top ~50px of the window (in CG coords)
         let titleBar = CGRect(x: wFrame.origin.x - 5,
                               y: wFrame.origin.y - 5,
                               width: wFrame.width + 10,
                               height: 50)
 
         clickedTitleBar = titleBar.contains(mouseCG)
-        Log.general.info("SNAP mouseDown: app=\(bid) wFrame=\(Int(wFrame.origin.x)),\(Int(wFrame.origin.y)),\(Int(wFrame.width))x\(Int(wFrame.height)) mouseCG=\(Int(mouseCG.x)),\(Int(mouseCG.y)) titleBar=\(self.clickedTitleBar)")
     }
 
     // MARK: - Drag tick: detect significant mouse movement from title bar
@@ -174,8 +153,8 @@ final class SnapBarController: ObservableObject {
 
         guard dragState == .snapping, isShowing, let panel else { return }
 
-        if let idx = panel.presetIndex(at: mouse) {
-            applyPreset(panel.state.presets[idx])
+        if let preset = panel.presetAt(mouse) {
+            applyPreset(preset)
         }
         hidePanel()
     }
@@ -183,7 +162,9 @@ final class SnapBarController: ObservableObject {
     // MARK: - Panel management
 
     private func showPanel(on screen: NSScreen) {
-        if panel == nil { panel = SnapBarPanel() }
+        panel?.hide()  // hide old panel before creating new one
+        let groups = PresetGroup.groups(for: screen)
+        panel = SnapBarPanel(groups: groups)
         panel?.show(on: screen)
         targetScreen = screen
         isShowing = true
@@ -196,16 +177,33 @@ final class SnapBarController: ObservableObject {
     }
 
     private func updateHighlight(at mouse: NSPoint) {
-        panel?.state.highlightedIndex = panel?.presetIndex(at: mouse)
+        panel?.updateHighlight(at: mouse)
     }
 
     // MARK: - Apply preset
 
     private func applyPreset(_ preset: LayoutPreset) {
         guard let win = targetWindow, let screen = targetScreen else { return }
-        let frame = preset.frame(for: screen.visibleFrame)
+
+        // Convert NS visibleFrame (bottom-left origin) → CG coordinates (top-left origin)
+        // AXUIElement uses CG coordinates
+        let nsFrame = screen.visibleFrame
+        let primaryH = NSScreen.screens.first?.frame.height ?? 0
+        let cgVisible = CGRect(
+            x: nsFrame.origin.x,
+            y: primaryH - nsFrame.origin.y - nsFrame.height,
+            width: nsFrame.width,
+            height: nsFrame.height
+        )
+
+        let frame = preset.frame(for: cgVisible)
         windowManager.moveWindow(win, toFrame: frame)
-        Log.general.info("Snapped '\(preset.name)' on \(screen.localizedName)")
+        Log.general.info("Snapped '\(preset.id)' on \(screen.localizedName)")
+
+        // Persist layout after a short delay (let the window settle)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.onSnap?()
+        }
     }
 
     // MARK: - AX helpers

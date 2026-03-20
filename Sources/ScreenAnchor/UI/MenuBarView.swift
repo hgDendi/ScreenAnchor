@@ -16,6 +16,7 @@ struct MenuBarView: View {
             screenListSection
             if !orchestrator.lastAction.isEmpty { statusSection }
             settingsSection
+            caffeinateSection
             footerSection
         }
         .frame(width: 300)
@@ -178,7 +179,7 @@ struct MenuBarView: View {
                 )
                 settingRow(
                     icon: "rectangle.topthird.inset.filled",
-                    title: "Snap Bar (drag window to snap)",
+                    title: "Snap Bar",
                     isOn: $orchestrator.snapBarController.isEnabled
                 )
                 settingRow(
@@ -190,6 +191,72 @@ struct MenuBarView: View {
             .padding(.vertical, 4)
             .onChange(of: launchAtLogin) { newValue in
                 LoginItemManager.setEnabled(newValue)
+            }
+        }
+    }
+
+    // MARK: - Caffeinate
+
+    private var caffeinateSection: some View {
+        let mgr = orchestrator.caffeinateManager
+        return VStack(spacing: 0) {
+            sectionDivider
+
+            if mgr.isActive {
+                HStack(spacing: 10) {
+                    Image(systemName: "cup.and.saucer.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.orange)
+                        .frame(width: 16)
+                    Text("Caffeinate")
+                        .font(.system(size: 12, weight: .medium))
+                    Text("\(mgr.remainingMinutes) min")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.orange.opacity(0.12))
+                        .foregroundStyle(.orange)
+                        .clipShape(Capsule())
+                    Spacer()
+                    Button {
+                        mgr.deactivate()
+                    } label: {
+                        Text("Stop")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.red.opacity(0.8))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+            } else {
+                HStack(spacing: 10) {
+                    Image(systemName: "cup.and.saucer")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 16)
+                    Text("Caffeinate")
+                        .font(.system(size: 12))
+                    Spacer()
+                    HStack(spacing: 4) {
+                        ForEach(CaffeinateManager.durations, id: \.minutes) { item in
+                            Button {
+                                mgr.activate(minutes: item.minutes)
+                            } label: {
+                                Text(item.label)
+                                    .font(.system(size: 9, weight: .medium))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(Color.primary.opacity(hoveredButton == "caf-\(item.minutes)" ? 0.1 : 0.05))
+                                    .clipShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            .onHover { h in hoveredButton = h ? "caf-\(item.minutes)" : nil }
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
             }
         }
     }

@@ -1,17 +1,9 @@
 import Foundation
 import CoreGraphics
+import Cocoa
 
-struct LayoutPreset: Identifiable, Equatable {
+struct LayoutPreset: Equatable {
     let id: String
-    let name: String
-    let group: Int
-
-    /// Normalized zones for the visual icon (each rect in 0..1 space)
-    let zones: [CGRect]
-    /// Which zone is the "active" one (highlighted in the icon)
-    let activeZone: Int
-
-    /// Relative frame for window placement (x, y, w, h each in 0..1 of screen visible frame)
     let relX: CGFloat
     let relY: CGFloat
     let relW: CGFloat
@@ -25,76 +17,189 @@ struct LayoutPreset: Identifiable, Equatable {
             height: relH * visibleFrame.height
         )
     }
+}
 
-    static func == (lhs: LayoutPreset, rhs: LayoutPreset) -> Bool {
-        lhs.id == rhs.id
+struct PresetGroup: Identifiable {
+    let id: String
+    let label: String
+    let iconWidth: CGFloat
+    let iconHeight: CGFloat
+    let rects: [CGRect]
+    let zones: [Zone]
+
+    struct Zone {
+        let hitRect: CGRect
+        let activeRectIndex: Int
+        let preset: LayoutPreset
     }
 }
 
-extension LayoutPreset {
-    // Zone helpers
-    private static let full1   = [CGRect(x: 0, y: 0, width: 1, height: 1)]
-    private static let half2   = [CGRect(x: 0, y: 0, width: 0.48, height: 1),
-                                  CGRect(x: 0.52, y: 0, width: 0.48, height: 1)]
-    private static let third3  = [CGRect(x: 0, y: 0, width: 0.31, height: 1),
-                                  CGRect(x: 0.345, y: 0, width: 0.31, height: 1),
-                                  CGRect(x: 0.69, y: 0, width: 0.31, height: 1)]
-    private static let twoOne  = [CGRect(x: 0, y: 0, width: 0.64, height: 1),
-                                  CGRect(x: 0.68, y: 0, width: 0.32, height: 1)]
-    private static let oneTwo  = [CGRect(x: 0, y: 0, width: 0.32, height: 1),
-                                  CGRect(x: 0.36, y: 0, width: 0.64, height: 1)]
-    private static let quad4   = [CGRect(x: 0, y: 0, width: 0.48, height: 0.47),
-                                  CGRect(x: 0.52, y: 0, width: 0.48, height: 0.47),
-                                  CGRect(x: 0, y: 0.53, width: 0.48, height: 0.47),
-                                  CGRect(x: 0.52, y: 0.53, width: 0.48, height: 0.47)]
+// MARK: - Group definitions
 
-    static let all: [LayoutPreset] = [
-        // Group 0: Full
-        LayoutPreset(id: "full", name: "Full", group: 0,
-                     zones: full1, activeZone: 0,
-                     relX: 0, relY: 0, relW: 1, relH: 1),
+extension PresetGroup {
 
-        // Group 1: Halves
-        LayoutPreset(id: "left-half", name: "Left ½", group: 1,
-                     zones: half2, activeZone: 0,
-                     relX: 0, relY: 0, relW: 0.5, relH: 1),
-        LayoutPreset(id: "right-half", name: "Right ½", group: 1,
-                     zones: half2, activeZone: 1,
-                     relX: 0.5, relY: 0, relW: 0.5, relH: 1),
+    /// Create a copy with different icon dimensions (rects are normalized, so they scale)
+    func sized(_ w: CGFloat, _ h: CGFloat) -> PresetGroup {
+        PresetGroup(id: id, label: label, iconWidth: w, iconHeight: h, rects: rects, zones: zones)
+    }
 
-        // Group 2: Two-thirds
-        LayoutPreset(id: "left-2-3", name: "Left ⅔", group: 2,
-                     zones: twoOne, activeZone: 0,
-                     relX: 0, relY: 0, relW: 2.0/3.0, relH: 1),
-        LayoutPreset(id: "right-2-3", name: "Right ⅔", group: 2,
-                     zones: oneTwo, activeZone: 1,
-                     relX: 1.0/3.0, relY: 0, relW: 2.0/3.0, relH: 1),
+    static func groups(for screen: NSScreen) -> [PresetGroup] {
+        let isPortrait = screen.frame.height > screen.frame.width
 
-        // Group 3: Thirds
-        LayoutPreset(id: "left-third", name: "Left ⅓", group: 3,
-                     zones: third3, activeZone: 0,
-                     relX: 0, relY: 0, relW: 1.0/3.0, relH: 1),
-        LayoutPreset(id: "center-third", name: "Center ⅓", group: 3,
-                     zones: third3, activeZone: 1,
-                     relX: 1.0/3.0, relY: 0, relW: 1.0/3.0, relH: 1),
-        LayoutPreset(id: "right-third", name: "Right ⅓", group: 3,
-                     zones: third3, activeZone: 2,
-                     relX: 2.0/3.0, relY: 0, relW: 1.0/3.0, relH: 1),
+        if isPortrait {
+            // Portrait icons: taller than wide to match screen shape
+            let bw: CGFloat = 40, bh: CGFloat = 62
+            let wide: CGFloat = 62
+            return [
+                full.sized(bw, bh),
+                paddedFull.sized(bw, bh),
+                halves.sized(wide, bh),
+                halvesVertical.sized(bw, bh),
+                thirdsVertical.sized(bw, bh),
+                quarters.sized(wide, bh),
+            ]
+        } else {
+            return [full, paddedFull, halves, thirds, quarters]
+        }
+    }
 
-        // Group 4: Quarters
-        LayoutPreset(id: "top-left", name: "Top Left", group: 4,
-                     zones: quad4, activeZone: 0,
-                     relX: 0, relY: 0, relW: 0.5, relH: 0.5),
-        LayoutPreset(id: "top-right", name: "Top Right", group: 4,
-                     zones: quad4, activeZone: 1,
-                     relX: 0.5, relY: 0, relW: 0.5, relH: 0.5),
-        LayoutPreset(id: "bottom-left", name: "Bottom Left", group: 4,
-                     zones: quad4, activeZone: 2,
-                     relX: 0, relY: 0.5, relW: 0.5, relH: 0.5),
-        LayoutPreset(id: "bottom-right", name: "Bottom Right", group: 4,
-                     zones: quad4, activeZone: 3,
-                     relX: 0.5, relY: 0.5, relW: 0.5, relH: 0.5),
-    ]
+    // MARK: Full
 
-    static let groupCount = 5
+    static let full = PresetGroup(
+        id: "full", label: "Full",
+        iconWidth: 68, iconHeight: 48,
+        rects: [CGRect(x: 0.04, y: 0.04, width: 0.92, height: 0.92)],
+        zones: [
+            Zone(hitRect: CGRect(x: 0, y: 0, width: 1, height: 1),
+                 activeRectIndex: 0,
+                 preset: LayoutPreset(id: "full", relX: 0, relY: 0, relW: 1, relH: 1))
+        ]
+    )
+
+    // MARK: Padded Full (10% margin each side)
+
+    static let paddedFull = PresetGroup(
+        id: "padded", label: "Padded",
+        iconWidth: 68, iconHeight: 48,
+        rects: [
+            CGRect(x: 0.04, y: 0.04, width: 0.92, height: 0.92),
+            CGRect(x: 0.15, y: 0.15, width: 0.70, height: 0.70),
+        ],
+        zones: [
+            Zone(hitRect: CGRect(x: 0, y: 0, width: 1, height: 1),
+                 activeRectIndex: 1,
+                 preset: LayoutPreset(id: "padded-full", relX: 0.1, relY: 0.1, relW: 0.8, relH: 0.8))
+        ]
+    )
+
+    // MARK: Horizontal Halves (landscape + portrait)
+
+    static let halves = PresetGroup(
+        id: "halves", label: "½",
+        iconWidth: 96, iconHeight: 48,
+        rects: [
+            CGRect(x: 0.04, y: 0.04, width: 0.44, height: 0.92),
+            CGRect(x: 0.52, y: 0.04, width: 0.44, height: 0.92),
+        ],
+        zones: [
+            Zone(hitRect: CGRect(x: 0, y: 0, width: 0.5, height: 1),
+                 activeRectIndex: 0,
+                 preset: LayoutPreset(id: "left-half", relX: 0, relY: 0, relW: 0.5, relH: 1)),
+            Zone(hitRect: CGRect(x: 0.5, y: 0, width: 0.5, height: 1),
+                 activeRectIndex: 1,
+                 preset: LayoutPreset(id: "right-half", relX: 0.5, relY: 0, relW: 0.5, relH: 1)),
+        ]
+    )
+
+    // MARK: Vertical Halves (portrait only)
+
+    static let halvesVertical = PresetGroup(
+        id: "halves-v", label: "½",
+        iconWidth: 68, iconHeight: 48,
+        rects: [
+            CGRect(x: 0.04, y: 0.04, width: 0.92, height: 0.44),
+            CGRect(x: 0.04, y: 0.52, width: 0.92, height: 0.44),
+        ],
+        zones: [
+            Zone(hitRect: CGRect(x: 0, y: 0, width: 1, height: 0.5),
+                 activeRectIndex: 0,
+                 preset: LayoutPreset(id: "top-half", relX: 0, relY: 0, relW: 1, relH: 0.5)),
+            Zone(hitRect: CGRect(x: 0, y: 0.5, width: 1, height: 0.5),
+                 activeRectIndex: 1,
+                 preset: LayoutPreset(id: "bottom-half", relX: 0, relY: 0.5, relW: 1, relH: 0.5)),
+        ]
+    )
+
+    // MARK: Horizontal Thirds (landscape)
+
+    static let thirds = PresetGroup(
+        id: "thirds", label: "⅓",
+        iconWidth: 110, iconHeight: 48,
+        rects: [
+            CGRect(x: 0.03, y: 0.04, width: 0.29, height: 0.92),
+            CGRect(x: 0.355, y: 0.04, width: 0.29, height: 0.92),
+            CGRect(x: 0.68, y: 0.04, width: 0.29, height: 0.92),
+        ],
+        zones: [
+            Zone(hitRect: CGRect(x: 0, y: 0, width: 0.333, height: 1),
+                 activeRectIndex: 0,
+                 preset: LayoutPreset(id: "left-third", relX: 0, relY: 0, relW: 1/3, relH: 1)),
+            Zone(hitRect: CGRect(x: 0.333, y: 0, width: 0.334, height: 1),
+                 activeRectIndex: 1,
+                 preset: LayoutPreset(id: "center-third", relX: 1/3, relY: 0, relW: 1/3, relH: 1)),
+            Zone(hitRect: CGRect(x: 0.667, y: 0, width: 0.333, height: 1),
+                 activeRectIndex: 2,
+                 preset: LayoutPreset(id: "right-third", relX: 2/3, relY: 0, relW: 1/3, relH: 1)),
+        ]
+    )
+
+    // MARK: Vertical Thirds (portrait)
+
+    static let thirdsVertical = PresetGroup(
+        id: "thirds-v", label: "⅓",
+        iconWidth: 68, iconHeight: 48,
+        rects: [
+            CGRect(x: 0.04, y: 0.03, width: 0.92, height: 0.28),
+            CGRect(x: 0.04, y: 0.355, width: 0.92, height: 0.28),
+            CGRect(x: 0.04, y: 0.68, width: 0.92, height: 0.28),
+        ],
+        zones: [
+            Zone(hitRect: CGRect(x: 0, y: 0, width: 1, height: 0.333),
+                 activeRectIndex: 0,
+                 preset: LayoutPreset(id: "top-third", relX: 0, relY: 0, relW: 1, relH: 1/3)),
+            Zone(hitRect: CGRect(x: 0, y: 0.333, width: 1, height: 0.334),
+                 activeRectIndex: 1,
+                 preset: LayoutPreset(id: "center-third-v", relX: 0, relY: 1/3, relW: 1, relH: 1/3)),
+            Zone(hitRect: CGRect(x: 0, y: 0.667, width: 1, height: 0.333),
+                 activeRectIndex: 2,
+                 preset: LayoutPreset(id: "bottom-third", relX: 0, relY: 2/3, relW: 1, relH: 1/3)),
+        ]
+    )
+
+    // MARK: Quarters
+
+    static let quarters = PresetGroup(
+        id: "quarters", label: "¼",
+        iconWidth: 96, iconHeight: 48,
+        rects: [
+            CGRect(x: 0.04, y: 0.04, width: 0.44, height: 0.43),
+            CGRect(x: 0.52, y: 0.04, width: 0.44, height: 0.43),
+            CGRect(x: 0.04, y: 0.53, width: 0.44, height: 0.43),
+            CGRect(x: 0.52, y: 0.53, width: 0.44, height: 0.43),
+        ],
+        zones: [
+            Zone(hitRect: CGRect(x: 0, y: 0, width: 0.5, height: 0.5),
+                 activeRectIndex: 0,
+                 preset: LayoutPreset(id: "top-left", relX: 0, relY: 0, relW: 0.5, relH: 0.5)),
+            Zone(hitRect: CGRect(x: 0.5, y: 0, width: 0.5, height: 0.5),
+                 activeRectIndex: 1,
+                 preset: LayoutPreset(id: "top-right", relX: 0.5, relY: 0, relW: 0.5, relH: 0.5)),
+            Zone(hitRect: CGRect(x: 0, y: 0.5, width: 0.5, height: 0.5),
+                 activeRectIndex: 2,
+                 preset: LayoutPreset(id: "bottom-left", relX: 0, relY: 0.5, relW: 0.5, relH: 0.5)),
+            Zone(hitRect: CGRect(x: 0.5, y: 0.5, width: 0.5, height: 0.5),
+                 activeRectIndex: 3,
+                 preset: LayoutPreset(id: "bottom-right", relX: 0.5, relY: 0.5, relW: 0.5, relH: 0.5)),
+        ]
+    )
 }

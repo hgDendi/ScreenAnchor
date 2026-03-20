@@ -1,40 +1,50 @@
 import SwiftUI
 import Cocoa
 
-// MARK: - Observable State
+// MARK: - State
 
 final class SnapBarState: ObservableObject {
-    @Published var highlightedIndex: Int?
-    let presets: [LayoutPreset] = LayoutPreset.all
+    @Published var highlightedGroupIndex: Int?
+    @Published var highlightedZoneIndex: Int?
+    let groups: [PresetGroup]
+
+    init(groups: [PresetGroup]) {
+        self.groups = groups
+    }
+
+    var highlightedPreset: LayoutPreset? {
+        guard let gi = highlightedGroupIndex, let zi = highlightedZoneIndex,
+              gi < groups.count, zi < groups[gi].zones.count
+        else { return nil }
+        return groups[gi].zones[zi].preset
+    }
 }
 
-// MARK: - NSPanel wrapper
+// MARK: - Panel
 
 final class SnapBarPanel {
     let panel: NSPanel
     let state: SnapBarState
 
-    static let cellWidth: CGFloat = 52
-    static let cellIconHeight: CGFloat = 34
-    static let cellTotalHeight: CGFloat = 52
-    static let cellGap: CGFloat = 6
-    static let groupGap: CGFloat = 16
-    static let panelPadding: CGFloat = 16
-    static let panelHeight: CGFloat = 72
+    static let groupGap: CGFloat = 22
+    static let panelPadding: CGFloat = 22
+    static let labelHeight: CGFloat = 18
+    static let iconLabelGap: CGFloat = 6
 
-    init() {
-        state = SnapBarState()
+    private var groupOrigins: [(x: CGFloat, iconWidth: CGFloat, iconHeight: CGFloat)] = []
 
-        let panelWidth = Self.computePanelWidth()
-        let rect = NSRect(x: 0, y: 0, width: panelWidth, height: Self.panelHeight)
+    init(groups: [PresetGroup]) {
+        state = SnapBarState(groups: groups)
+        let (panelWidth, panelHeight, origins) = Self.computeLayout(groups: state.groups)
+        groupOrigins = origins
 
+        let rect = NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight)
         panel = NSPanel(
             contentRect: rect,
             styleMask: [.nonactivatingPanel, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
+            backing: .buffered, defer: false
         )
-        panel.level = .screenSaver          // above everything
+        panel.level = .screenSaver
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
@@ -42,7 +52,7 @@ final class SnapBarPanel {
         panel.isMovableByWindowBackground = false
         panel.titlebarAppearsTransparent = true
         panel.titleVisibility = .hidden
-        panel.ignoresMouseEvents = true      // let events pass through to the window being dragged
+        panel.ignoresMouseEvents = true
 
         let hostingView = NSHostingView(rootView: SnapBarContentView(state: state))
         hostingView.frame = rect
@@ -50,68 +60,88 @@ final class SnapBarPanel {
     }
 
     func show(on screen: NSScreen) {
-        let panelWidth = panel.frame.width
-        let screenFrame = screen.frame
-        let visibleFrame = screen.visibleFrame
-
-        let x = screenFrame.origin.x + (screenFrame.width - panelWidth) / 2
-        // Position just below menu bar
-        let menuBarBottom = visibleFrame.maxY
-        let y = menuBarBottom - Self.panelHeight - 6
-
+        let w = panel.frame.width
+        let sf = screen.frame
+        let vf = screen.visibleFrame
+        let x = sf.origin.x + (sf.width - w) / 2
+        let y = vf.maxY - panel.frame.height - 8
         panel.setFrameOrigin(NSPoint(x: x, y: y))
         panel.orderFront(nil)
     }
 
     func hide() {
         panel.orderOut(nil)
-        state.highlightedIndex = nil
+        state.highlightedGroupIndex = nil
+        state.highlightedZoneIndex = nil
     }
 
-    /// Hit test: which preset is the mouse over? (screenPoint in NS coords)
-    func presetIndex(at screenPoint: NSPoint) -> Int? {
+    /// Hit test: returns the preset at the given NS screen point, or nil.
+    func presetAt(_ pt: NSPoint) -> LayoutPreset? {
         let pf = panel.frame
-        guard screenPoint.x >= pf.minX && screenPoint.x <= pf.maxX &&
-              screenPoint.y >= pf.minY && screenPoint.y <= pf.maxY
-        else { return nil }
+        guard pf.contains(pt) else { return nil }
 
-        let localX = screenPoint.x - pf.origin.x - Self.panelPadding
-        // Vertical: just check if within panel (already checked above)
+        let localX = pt.x - pf.origin.x - Self.panelPadding
+        // NS: y=0 at bottom. Panel bottom = pf.origin.y.
+        // Icon area starts at top of panel, below padding.
+        let panelLocalY = pt.y - pf.origin.y  // 0 = panel bottom
 
-        var x: CGFloat = 0
-        var lastGroup = -1
+        for (gi, origin) in groupOrigins.enumerated() {
+            let group = state.groups[gi]
+            guard localX >= origin.x && localX < origin.x + origin.iconWidth else { continue }
 
-        for (i, preset) in state.presets.enumerated() {
-            if preset.group != lastGroup {
-                if lastGroup >= 0 { x += Self.groupGap }
-                lastGroup = preset.group
-            } else {
-                x += Self.cellGap
+            let cellLocalX = (localX - origin.x) / origin.iconWidth   // 0..1
+            // Icon top in panel-local NS coords:
+            let iconTopY = pf.height - Self.panelPadding
+            let iconBottomY = iconTopY - origin.iconHeight
+            guard panelLocalY >= iconBottomY && panelLocalY <= iconTopY else { continue }
+
+            // y within icon: 0 = top, 1 = bottom (visual convention)
+            let cellLocalY = 1.0 - (panelLocalY - iconBottomY) / origin.iconHeight
+
+            for (zi, zone) in group.zones.enumerated() {
+                if zone.hitRect.contains(CGPoint(x: cellLocalX, y: cellLocalY)) {
+                    state.highlightedGroupIndex = gi
+                    state.highlightedZoneIndex = zi
+                    return zone.preset
+                }
             }
-
-            if localX >= x && localX < x + Self.cellWidth {
-                return i
-            }
-            x += Self.cellWidth
         }
+
+        state.highlightedGroupIndex = nil
+        state.highlightedZoneIndex = nil
         return nil
     }
 
-    private static func computePanelWidth() -> CGFloat {
-        let presets = LayoutPreset.all
-        var width: CGFloat = panelPadding * 2
-        var lastGroup = -1
-
-        for (i, preset) in presets.enumerated() {
-            if preset.group != lastGroup {
-                if i > 0 { width += groupGap }
-                lastGroup = preset.group
-            } else {
-                width += cellGap
-            }
-            width += cellWidth
+    /// Update highlight state (returns preset or nil)
+    @discardableResult
+    func updateHighlight(at pt: NSPoint) -> LayoutPreset? {
+        let result = presetAt(pt)
+        if result == nil {
+            state.highlightedGroupIndex = nil
+            state.highlightedZoneIndex = nil
         }
-        return width
+        return result
+    }
+
+    // MARK: - Layout calculation
+
+    private static func computeLayout(groups: [PresetGroup])
+        -> (width: CGFloat, height: CGFloat, origins: [(x: CGFloat, iconWidth: CGFloat, iconHeight: CGFloat)])
+    {
+        var origins: [(x: CGFloat, iconWidth: CGFloat, iconHeight: CGFloat)] = []
+        var x: CGFloat = 0
+        var maxIconH: CGFloat = 0
+
+        for (i, g) in groups.enumerated() {
+            if i > 0 { x += groupGap }
+            origins.append((x: x, iconWidth: g.iconWidth, iconHeight: g.iconHeight))
+            x += g.iconWidth
+            maxIconH = max(maxIconH, g.iconHeight)
+        }
+
+        let totalWidth = x + panelPadding * 2
+        let totalHeight = maxIconH + labelHeight + iconLabelGap + panelPadding * 2
+        return (totalWidth, totalHeight, origins)
     }
 }
 
@@ -121,101 +151,73 @@ struct SnapBarContentView: View {
     @ObservedObject var state: SnapBarState
 
     var body: some View {
-        HStack(spacing: 0) {
-            let groups = groupedPresets()
-            ForEach(Array(groups.enumerated()), id: \.offset) { gIdx, group in
-                if gIdx > 0 { groupDivider }
-                HStack(spacing: 6) {
-                    ForEach(group) { preset in
-                        let idx = state.presets.firstIndex(of: preset)!
-                        PresetCellView(
-                            preset: preset,
-                            isHighlighted: state.highlightedIndex == idx
-                        )
-                    }
-                }
+        HStack(spacing: 22) {
+            ForEach(Array(state.groups.enumerated()), id: \.element.id) { gi, group in
+                GroupCellView(
+                    group: group,
+                    isGroupHighlighted: state.highlightedGroupIndex == gi,
+                    activeZoneIndex: state.highlightedGroupIndex == gi ? state.highlightedZoneIndex : nil
+                )
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 22)
+        .padding(.vertical, 18)
         .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(
-            RoundedRectangle(cornerRadius: 14)
+            RoundedRectangle(cornerRadius: 16)
                 .strokeBorder(Color.white.opacity(0.2), lineWidth: 0.5)
         )
-        .shadow(color: .black.opacity(0.3), radius: 16, y: 6)
-    }
-
-    private var groupDivider: some View {
-        RoundedRectangle(cornerRadius: 0.5)
-            .fill(Color.primary.opacity(0.1))
-            .frame(width: 1, height: 36)
-            .padding(.horizontal, 7.5)
-    }
-
-    private func groupedPresets() -> [[LayoutPreset]] {
-        var result: [[LayoutPreset]] = []
-        var current: [LayoutPreset] = []
-        var last = -1
-        for p in state.presets {
-            if p.group != last && !current.isEmpty {
-                result.append(current)
-                current = []
-            }
-            current.append(p)
-            last = p.group
-        }
-        if !current.isEmpty { result.append(current) }
-        return result
+        .shadow(color: .black.opacity(0.15), radius: 8, y: 2)
     }
 }
 
-struct PresetCellView: View {
-    let preset: LayoutPreset
-    let isHighlighted: Bool
+struct GroupCellView: View {
+    let group: PresetGroup
+    let isGroupHighlighted: Bool
+    let activeZoneIndex: Int?
 
     var body: some View {
-        VStack(spacing: 3) {
-            // Visual icon
+        VStack(spacing: 6) {
+            // Interactive icon
             ZStack {
-                ForEach(Array(preset.zones.enumerated()), id: \.offset) { i, zone in
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(fillColor(i))
-                        .frame(width: zone.width * 44, height: zone.height * 30)
-                        .position(x: zone.midX * 44, y: zone.midY * 30)
+                ForEach(Array(group.rects.enumerated()), id: \.offset) { ri, rect in
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(rectFill(ri))
+                        .frame(width: rect.width * group.iconWidth,
+                               height: rect.height * group.iconHeight)
+                        .position(x: rect.midX * group.iconWidth,
+                                  y: rect.midY * group.iconHeight)
                 }
             }
-            .frame(width: 44, height: 30)
-            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .frame(width: group.iconWidth, height: group.iconHeight)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .strokeBorder(isHighlighted ? Color.blue.opacity(0.5) : Color.primary.opacity(0.1), lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(isGroupHighlighted ? Color.blue.opacity(0.4) : Color.primary.opacity(0.1), lineWidth: 0.5)
+            )
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isGroupHighlighted ? Color.blue.opacity(0.06) : Color.clear)
             )
 
             // Label
-            Text(preset.name)
-                .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(isHighlighted ? .primary : .secondary)
-                .lineLimit(1)
+            Text(group.label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(isGroupHighlighted ? .primary : .secondary)
         }
-        .frame(width: 52, height: 52)
-        .background(
-            RoundedRectangle(cornerRadius: 7)
-                .fill(isHighlighted ? Color.blue.opacity(0.12) : Color.clear)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 7)
-                .strokeBorder(isHighlighted ? Color.blue.opacity(0.3) : Color.clear, lineWidth: 1.5)
-        )
-        .scaleEffect(isHighlighted ? 1.08 : 1.0)
-        .animation(.easeOut(duration: 0.12), value: isHighlighted)
+        .scaleEffect(isGroupHighlighted ? 1.05 : 1.0)
+        .animation(.easeOut(duration: 0.1), value: isGroupHighlighted)
+        .animation(.easeOut(duration: 0.1), value: activeZoneIndex)
     }
 
-    private func fillColor(_ index: Int) -> Color {
-        if index == preset.activeZone {
-            return isHighlighted ? .blue : .blue.opacity(0.5)
+    private func rectFill(_ index: Int) -> Color {
+        if let azi = activeZoneIndex {
+            let zone = group.zones[azi]
+            if index == zone.activeRectIndex {
+                return .blue
+            }
         }
-        return Color.primary.opacity(isHighlighted ? 0.15 : 0.08)
+        return Color.primary.opacity(isGroupHighlighted ? 0.12 : 0.08)
     }
 }
