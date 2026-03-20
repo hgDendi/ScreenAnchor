@@ -36,6 +36,7 @@ macOS menu bar app for multi-screen window management. Zero configuration — ju
   | ¼ | Top-left / Top-right / Bottom-left / Bottom-right |
 
 - **Portrait-aware**: portrait screens get vertical splits (½ ↕, ⅓ ↕) with matching aspect ratio icons
+- **Smart gaps**: 6pt spacing between adjacent split windows for a cleaner look
 - All window positions are automatically saved for every app
 
 **Caffeinate**
