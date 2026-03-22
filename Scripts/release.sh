@@ -72,11 +72,39 @@ else
     echo "==> Skipping notarization (NOTARIZE_PROFILE not set)"
 fi
 
+# Step 5: Create DMG
+DMG_NAME="${APP_NAME}-v${VERSION}.dmg"
+echo "==> Creating ${DMG_NAME}..."
+DMG_TEMP="dmg_stage"
+rm -rf "${DMG_TEMP}" "${DMG_NAME}"
+mkdir -p "${DMG_TEMP}"
+cp -R "${APP_NAME}.app" "${DMG_TEMP}/"
+ln -s /Applications "${DMG_TEMP}/Applications"
+hdiutil create -volname "${APP_NAME}" \
+    -srcfolder "${DMG_TEMP}" \
+    -ov -format UDZO \
+    "${DMG_NAME}" >/dev/null
+rm -rf "${DMG_TEMP}"
+
+# Sign and staple DMG
+if [ "${SIGN_IDENTITY}" != "-" ]; then
+    codesign --force --sign "${SIGN_IDENTITY}" "${DMG_NAME}"
+    if [ -n "${NOTARIZE_PROFILE}" ]; then
+        echo "==> Notarizing DMG..."
+        xcrun notarytool submit "${DMG_NAME}" \
+            --keychain-profile "${NOTARIZE_PROFILE}" \
+            --wait
+        xcrun stapler staple "${DMG_NAME}"
+    fi
+fi
+
 echo ""
-echo "==> Release artifact ready: ${ZIP_NAME}"
+echo "==> Release artifacts ready:"
+echo "    ${ZIP_NAME}"
+echo "    ${DMG_NAME}"
 echo ""
 echo "Next steps:"
 echo "  1. git add -A && git commit -m 'Release v${VERSION}'"
 echo "  2. git tag v${VERSION}"
 echo "  3. git push && git push --tags"
-echo "  4. gh release create v${VERSION} ${ZIP_NAME} --title 'v${VERSION}' --generate-notes"
+echo "  4. gh release create v${VERSION} ${ZIP_NAME} ${DMG_NAME} --title 'v${VERSION}' --generate-notes"
