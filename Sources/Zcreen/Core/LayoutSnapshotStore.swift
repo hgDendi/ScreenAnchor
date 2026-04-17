@@ -7,15 +7,22 @@ class LayoutSnapshotStore: ObservableObject {
 
     private let snapshotDir: URL
     private var cache: [String: LayoutSnapshot] = [:]
+    private weak var screenDetector: ScreenDetector?
 
-    init(snapshotDirectory: URL? = nil, loadExisting: Bool = true) {
+    init(snapshotDirectory: URL? = nil, loadExisting: Bool = true, screenDetector: ScreenDetector? = nil) {
         let configDir = snapshotDirectory ?? FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".config/zcreen/snapshots")
         self.snapshotDir = configDir
+        self.screenDetector = screenDetector
         try? FileManager.default.createDirectory(at: configDir, withIntermediateDirectories: true)
         if loadExisting {
             loadAll()
         }
+    }
+
+    /// Allow the store to be constructed before the orchestrator wires up the detector.
+    func setScreenDetector(_ detector: ScreenDetector) {
+        self.screenDetector = detector
     }
 
     func save(snapshot: LayoutSnapshot) {
@@ -132,7 +139,7 @@ class LayoutSnapshotStore: ObservableObject {
     private func doRestore(snapshot: LayoutSnapshot, windowManager: WindowManager,
                            excludeBundleIds: Set<String>, windowFilter: WindowFilter) -> [String] {
         let allWindows = windowManager.getAllWindows(filter: windowFilter)
-        let currentScreens = detectCurrentScreens()
+        let currentScreens = currentScreensSnapshot()
         Log.snapshot.info("RESTORE: snapshot has \(snapshot.windows.count) saved, \(allWindows.count) running")
 
         var savedByBundle: [String: [WindowSnapshot]] = [:]
@@ -160,11 +167,13 @@ class LayoutSnapshotStore: ObservableObject {
                 continue
             }
 
-            let candidates = runningWindows.map { running in
-                WindowMatchCandidate(
+            let candidates = runningWindows.map { running -> WindowMatchCandidate in
+                let screen = currentScreenContext(for: running.frame, in: currentScreens)
+                return WindowMatchCandidate(
                     title: running.title,
                     frame: running.frame,
-                    screenName: currentScreenName(for: running.frame),
+                    screenName: screen.name,
+                    screenKey: screen.key,
                     role: running.role,
                     subrole: running.subrole
                 )
@@ -227,15 +236,22 @@ class LayoutSnapshotStore: ObservableObject {
         return CoordinateConverter.screenContainingAccessibilityPoint(center, in: screens)
     }
 
-    private func currentScreenName(for frame: CGRect) -> String {
+    /// Resolve the current screen for a window frame, returning both display name and persistent key.
+    private func currentScreenContext(for frame: CGRect, in screens: [ScreenInfo]) -> (name: String, key: String?) {
         let center = CGPoint(x: frame.midX, y: frame.midY)
-        let screenFrames = NSScreen.screens.map(\.frame)
-        return NSScreen.screens.first { screen in
-            guard let screenFrame = CoordinateConverter.accessibilityScreenFrame(for: screen.frame, screenFrames: screenFrames) else {
-                return false
-            }
-            return screenFrame.contains(center)
-        }?.localizedName ?? "Unknown"
+        if let screen = CoordinateConverter.screenContainingAccessibilityPoint(center, in: screens) {
+            return (screen.name, screen.uniqueKey)
+        }
+        return ("Unknown", nil)
+    }
+
+    /// Prefer the injected `ScreenDetector` (single source of truth) and fall back to a
+    /// directly-built list from `NSScreen.screens` for tests / standalone usage.
+    private func currentScreensSnapshot() -> [ScreenInfo] {
+        if let detectorScreens = screenDetector?.screens, !detectorScreens.isEmpty {
+            return detectorScreens
+        }
+        return detectCurrentScreens()
     }
 
     private func detectCurrentScreens() -> [ScreenInfo] {

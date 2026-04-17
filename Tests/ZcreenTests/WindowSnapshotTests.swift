@@ -17,8 +17,10 @@ final class WindowSnapshotTests: XCTestCase {
     }
 
     func testResolvedFramePrefersPhysicalScreenKeyOverAbsoluteFrame() {
+        // Use distinct displayIDs so the persistent-ID resolution does not collapse them
+        // when CGDisplayCreateUUIDFromDisplayID happens to return the same UUID for both.
         let mainScreen = ScreenInfo(
-            displayID: 1,
+            displayID: 901,
             name: "Built-in Retina Display",
             frame: CGRect(x: 0, y: 0, width: 1512, height: 982),
             isBuiltIn: true,
@@ -28,7 +30,7 @@ final class WindowSnapshotTests: XCTestCase {
             serialNumber: 111
         )
         let screen = ScreenInfo(
-            displayID: 1,
+            displayID: 902,
             name: "Dell",
             frame: CGRect(x: 1512, y: 0, width: 1200, height: 982),
             isBuiltIn: false,

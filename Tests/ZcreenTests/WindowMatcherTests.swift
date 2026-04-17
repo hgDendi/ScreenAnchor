@@ -37,6 +37,44 @@ final class WindowMatcherTests: XCTestCase {
         XCTAssertEqual(assignments.first(where: { $0.savedIndex == 1 })?.runningIndex, 0)
     }
 
+    func testSameTitleOnDifferentScreensIsResolvedByScreenKey() {
+        // Two saved windows with identical titles but on different physical displays.
+        // Without screenKey, the matcher could swap them; screenKey should pin each to its display.
+        let saved = [
+            makeSnapshot(title: "Notes", width: 800, height: 600, screenName: "Built-in",
+                         screenKey: "uuid-builtin"),
+            makeSnapshot(title: "Notes", width: 800, height: 600, screenName: "Dell U2723QE",
+                         screenKey: "uuid-dell"),
+        ]
+        let running = [
+            makeCandidate(title: "Notes", width: 800, height: 600, screenName: "Dell U2723QE",
+                          screenKey: "uuid-dell"),
+            makeCandidate(title: "Notes", width: 800, height: 600, screenName: "Built-in",
+                          screenKey: "uuid-builtin"),
+        ]
+
+        let assignments = WindowMatcher.match(saved: saved, running: running)
+
+        XCTAssertEqual(assignments.count, 2)
+        XCTAssertEqual(assignments.first(where: { $0.savedIndex == 0 })?.runningIndex, 1)
+        XCTAssertEqual(assignments.first(where: { $0.savedIndex == 1 })?.runningIndex, 0)
+    }
+
+    func testScreenKeyMismatchPenalizedRelativeToNoScreenKey() {
+        // Saved has a screenKey; one running candidate matches it, another has a different key.
+        // The matching screenKey should win even though the other candidate has identical other signals.
+        let saved = makeSnapshot(title: "Doc", width: 800, height: 600, screenKey: "uuid-a")
+        let running = [
+            makeCandidate(title: "Doc", width: 800, height: 600, screenKey: "uuid-b"),
+            makeCandidate(title: "Doc", width: 800, height: 600, screenKey: "uuid-a"),
+        ]
+
+        let assignments = WindowMatcher.match(saved: [saved], running: running)
+
+        XCTAssertEqual(assignments.count, 1)
+        XCTAssertEqual(assignments[0].runningIndex, 1)
+    }
+
     func testLowConfidenceWhenOnlyWeakSignalsExist() {
         let saved = [
             makeSnapshot(title: nil, width: 800, height: 600, role: nil, subrole: nil, screenName: "Unknown"),
@@ -53,13 +91,14 @@ final class WindowMatcherTests: XCTestCase {
 
     private func makeSnapshot(title: String?, width: Double, height: Double,
                               role: String? = "AXWindow", subrole: String? = "AXStandardWindow",
-                              screenName: String = "Main") -> WindowSnapshot {
+                              screenName: String = "Main", screenKey: String? = nil) -> WindowSnapshot {
         WindowSnapshot(
             bundleId: "com.test.app",
             appName: "Test App",
             windowTitle: title,
             frame: .init(CGRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height))),
             screenName: screenName,
+            screenKey: screenKey,
             windowRole: role,
             windowSubrole: subrole
         )
@@ -67,11 +106,12 @@ final class WindowMatcherTests: XCTestCase {
 
     private func makeCandidate(title: String?, width: CGFloat, height: CGFloat,
                                role: String? = "AXWindow", subrole: String? = "AXStandardWindow",
-                               screenName: String = "Main") -> WindowMatchCandidate {
+                               screenName: String = "Main", screenKey: String? = nil) -> WindowMatchCandidate {
         WindowMatchCandidate(
             title: title,
             frame: CGRect(x: 0, y: 0, width: width, height: height),
             screenName: screenName,
+            screenKey: screenKey,
             role: role,
             subrole: subrole
         )

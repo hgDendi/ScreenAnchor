@@ -87,11 +87,7 @@ final class ScreenDetector: ObservableObject {
 
     private func assignPositions(_ infos: [ScreenInfo]) -> [ScreenInfo] {
         guard infos.count > 1 else {
-            return infos.map {
-                ScreenInfo(displayID: $0.displayID, name: $0.name, frame: $0.frame,
-                           isBuiltIn: $0.isBuiltIn, position: .single,
-                           vendorID: $0.vendorID, modelID: $0.modelID, serialNumber: $0.serialNumber)
-            }
+            return infos.map { rebuild($0, position: .single) }
         }
 
         return infos.enumerated().map { index, info in
@@ -103,10 +99,22 @@ final class ScreenDetector: ObservableObject {
             } else {
                 position = .center
             }
-            return ScreenInfo(displayID: info.displayID, name: info.name, frame: info.frame,
-                              isBuiltIn: info.isBuiltIn, position: position,
-                              vendorID: info.vendorID, modelID: info.modelID, serialNumber: info.serialNumber)
+            return rebuild(info, position: position)
         }
+    }
+
+    private func rebuild(_ info: ScreenInfo, position: ScreenPosition) -> ScreenInfo {
+        ScreenInfo(
+            displayID: info.displayID,
+            name: info.name,
+            frame: info.frame,
+            isBuiltIn: info.isBuiltIn,
+            position: position,
+            vendorID: info.vendorID,
+            modelID: info.modelID,
+            serialNumber: info.serialNumber,
+            persistentID: info.persistentID
+        )
     }
 
     /// Profile key = sorted hardware unique keys joined with "+".

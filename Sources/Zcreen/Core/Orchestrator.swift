@@ -58,6 +58,10 @@ final class Orchestrator: ObservableObject {
         self.snapshotStore = snapshotStore
         self.ruleEngine = ruleEngine
 
+        // Inject the live ScreenDetector so the snapshot store stops maintaining a parallel
+        // NSScreen-derived view of displays.
+        snapshotStore.setScreenDetector(screenDetector)
+
         let resolvedSnapBarController = snapBarController ?? SnapBarController(windowManager: windowManager)
         self.snapBarController = resolvedSnapBarController
         self.caffeinateManager = caffeinateManager

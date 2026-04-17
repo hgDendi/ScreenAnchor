@@ -5,8 +5,19 @@ struct WindowMatchCandidate {
     let title: String?
     let frame: CGRect
     let screenName: String
+    let screenKey: String?
     let role: String?
     let subrole: String?
+
+    init(title: String?, frame: CGRect, screenName: String, screenKey: String? = nil,
+         role: String?, subrole: String?) {
+        self.title = title
+        self.frame = frame
+        self.screenName = screenName
+        self.screenKey = screenKey
+        self.role = role
+        self.subrole = subrole
+    }
 }
 
 struct WindowMatchAssignment {
@@ -80,8 +91,19 @@ enum WindowMatcher {
             score += 60
         }
 
+        // screenKey is the strongest screen signal — it is the persistent display ID, so a match
+        // strongly suggests "same physical monitor". Penalize a known mismatch to avoid placing a
+        // window on the wrong display when the user has multiple displays of the same model.
+        if let savedKey = saved.screenKey, let runningKey = running.screenKey {
+            if savedKey == runningKey {
+                score += 180
+            } else {
+                score -= 100
+            }
+        }
+
         if saved.screenName == running.screenName {
-            score += 40
+            score += 20
         }
 
         let sizeDelta = abs(saved.frame.width - Double(running.frame.width)) +
