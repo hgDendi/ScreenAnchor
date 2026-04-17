@@ -32,7 +32,7 @@ final class SnapBarController: ObservableObject {
 
     deinit { pollTimer?.invalidate() }
 
-    // MARK: - Adaptive Polling (4 Hz idle, 20 Hz during drag)
+    // MARK: - Adaptive Polling (~30 Hz idle, ~60 Hz during drag)
 
     private func startPolling(highFrequency: Bool) {
         pollTimer?.invalidate()

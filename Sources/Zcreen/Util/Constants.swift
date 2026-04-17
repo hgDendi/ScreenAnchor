@@ -3,10 +3,10 @@ import CoreGraphics
 
 enum Constants {
     enum SnapBar {
-        /// 高频轮询间隔 (20 Hz, 用于拖拽中)
-        static let highFrequencyInterval: TimeInterval = 0.05
-        /// 低频轮询间隔 (4 Hz, 用于 idle 检测)
-        static let lowFrequencyInterval: TimeInterval = 0.25
+        /// 高频轮询间隔 (~60 Hz, 用于拖拽中)
+        static let highFrequencyInterval: TimeInterval = 0.016
+        /// 低频轮询间隔 (~30 Hz, 用于 idle 检测，确保 mouseDown 边沿低延迟)
+        static let lowFrequencyInterval: TimeInterval = 0.033
         /// 触发拖拽的最小移动距离 (pt)
         static let dragThreshold: CGFloat = 12
         /// Title bar 检测高度 (pt)
@@ -15,8 +15,8 @@ enum Constants {
         static let titleBarPadding: CGFloat = 5
         /// Snap 后保存延迟 (s)
         static let snapSaveDelay: TimeInterval = 0.3
-        /// Tracking 超时 tick 数 (idle 后放弃检测)
-        static let trackingTimeoutTicks: Int = 20
+        /// Tracking 超时 tick 数 (高频 60Hz × 60 ≈ 1s，与原 4Hz × 5 等效)
+        static let trackingTimeoutTicks: Int = 60
     }
 
     enum Layout {
