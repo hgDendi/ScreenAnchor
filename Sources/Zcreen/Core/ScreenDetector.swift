@@ -14,10 +14,14 @@ final class ScreenDetector: ObservableObject {
 
     var screenCount: Int { screens.count }
 
-    /// Fires after screen changes settle (debounced). Emits the new profileKey.
+    /// Fires after screen changes settle. Emits the new profileKey.
+    /// Uses throttle (latest, ~`Constants.Timing.screenChangeDebounceMs`) instead of a
+    /// fixed debounce so a burst of reconfig events collapses into a single trailing
+    /// notification very quickly after settle. `.beginConfigurationFlag` pulses are
+    /// dropped at the source (never pushed onto `screenChangeSubject`).
     var onScreensChanged: AnyPublisher<String, Never> {
         screenChangeSubject
-            .debounce(for: .milliseconds(Constants.Timing.screenChangeDebounceMs), scheduler: DispatchQueue.main)
+            .throttle(for: .milliseconds(Constants.Timing.screenChangeDebounceMs), scheduler: DispatchQueue.main, latest: true)
             .map { [weak self] in
                 self?.refreshScreens()
                 return self?.profileKey ?? ""
@@ -136,12 +140,17 @@ final class ScreenDetector: ObservableObject {
 
     fileprivate func handleDisplayChange(flags: CGDisplayChangeSummaryFlags) {
         if flags.contains(.beginConfigurationFlag) {
+            // Begin pulses early-return so they never reach screenChangeSubject; wait for
+            // a concrete add/remove/move/setMain to publish a settled change.
             beginConfigSubject.send()
+            return
         }
 
-        if flags.contains(.addFlag) || flags.contains(.removeFlag) ||
-           flags.contains(.movedFlag) || flags.contains(.setMainFlag) {
-           screenChangeSubject.send()
+        let isConcreteChange = flags.contains(.addFlag) || flags.contains(.removeFlag) ||
+            flags.contains(.movedFlag) || flags.contains(.setMainFlag)
+
+        if isConcreteChange {
+            screenChangeSubject.send()
         }
     }
 

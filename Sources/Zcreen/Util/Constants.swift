@@ -38,16 +38,16 @@ enum Constants {
     }
 
     enum Timing {
-        /// 屏幕变化 debounce (ms)
-        static let screenChangeDebounceMs: Int = 500
+        /// 屏幕变化 throttle 间隔 (ms)，begin/settle 状态机后 latest-event 触发延迟。
+        static let screenChangeDebounceMs: Int = 100
         /// 定时自动保存布局间隔 (s)
         static let layoutAutoSaveInterval: TimeInterval = 15
-        /// 屏幕变化后延迟保存当前布局 (s)
-        static let screenChangeAutoSaveDelay: TimeInterval = 2.0
+        /// 屏幕变化后延迟保存当前布局 (s) — 给用户更长的手动调整窗口期。
+        static let screenChangeAutoSaveDelay: TimeInterval = 5.0
         /// 配置文件变化重载延迟 (s)
         static let configReloadDelay: TimeInterval = 0.2
         /// 快照恢复重试基础延迟 (s)
-        static let snapshotRetryBaseDelay: TimeInterval = 1.0
+        static let snapshotRetryBaseDelay: TimeInterval = 0.4
         /// 快照恢复最大重试次数
         static let snapshotMaxRetries: Int = 3
         /// App 启动后轮询窗口间隔 (s)
